@@ -1,18 +1,125 @@
 ﻿function Set-AdditionalCAProperty {
+    <#
+    .SYNOPSIS
+        Sets additional properties for a Certificate Authority (CA) object.
+
+    .DESCRIPTION
+        This script sets additional properties for a Certificate Authority (CA) object.
+        It takes an array of AD CS Objects as input, which represent the CA objects to be processed.
+        The script filters the AD CS Objects based on the objectClass property and performs the necessary operations
+        to set the additional properties.
+
+    .PARAMETER ADCSObjects
+        Specifies the array of AD CS Objects to be processed. This parameter is mandatory and supports pipeline input.
+
+    .PARAMETER Credential
+        Specifies the PSCredential object to be used for authentication when accessing the CA objects.
+        If not provided, the script will use the current user's credentials.
+
+    .EXAMPLE
+        $ADCSObjects = Get-ADCSObject -Filter
+        Set-AdditionalCAProperty -ADCSObjects $ADCSObjects -ForestGC 'dc1.ad.dotdot.horse:3268'
+
+    .NOTES
+        Author: Jake Hildreth
+        Date: July 15, 2022
+    #>
+
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [parameter(
             Mandatory = $true,
             ValueFromPipeline = $true)]
-        [array]$ADCSObjects,
-        [System.Management.Automation.PSCredential]$Credential
+        [Microsoft.ActiveDirectory.Management.ADEntity[]]$ADCSObjects,
+        [PSCredential]$Credential,
+        $ForestGC
     )
+
+    begin {
+        $CAEnrollmentEndpoint = @()
+        if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy') ) {
+            if ($PSVersionTable.PSEdition -eq 'Desktop') {
+                $code = @"
+                    using System.Net;
+                    using System.Security.Cryptography.X509Certificates;
+                    public class TrustAllCertsPolicy : ICertificatePolicy {
+                        public bool CheckValidationResult(ServicePoint srvPoint, X509Certificate certificate, WebRequest request, int certificateProblem) {
+                            return true;
+                        }
+                    }
+"@
+                Add-Type -TypeDefinition $code -Language CSharp
+                [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
+            } else {
+                Add-Type @"
+                    using System.Net;
+                    using System.Security.Cryptography.X509Certificates;
+                    using System.Net.Security;
+                    public class TrustAllCertsPolicy {
+                        public static bool TrustAllCerts(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) {
+                            return true;
+                        }
+                    }
+"@
+                # Set the ServerCertificateValidationCallback
+                [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [TrustAllCertsPolicy]::TrustAllCerts
+            }
+        }
+    }
+
     process {
         $ADCSObjects | Where-Object objectClass -Match 'pKIEnrollmentService' | ForEach-Object {
-            [string]$CAEnrollmentEndpoint = $_.'msPKI-Enrollment-Servers' | Select-String 'http.*' | ForEach-Object { $_.Matches[0].Value }
+            #[array]$CAEnrollmentEndpoint = $_.'msPKI-Enrollment-Servers' | Select-String 'http.*' | ForEach-Object { $_.Matches[0].Value }
+            foreach ($directory in @("certsrv/", "$($_.Name)_CES_Kerberos/service.svc", "$($_.Name)_CES_Kerberos/service.svc/CES", "ADPolicyProvider_CEP_Kerberos/service.svc", "certsrv/mscep/")) {
+                $URL = "://$($_.dNSHostName)/$directory"
+                try {
+                    $Auth = 'NTLM'
+                    $FullURL = "http$URL"
+                    $Request = [System.Net.WebRequest]::Create($FullURL)
+                    $Cache = [System.Net.CredentialCache]::New()
+                    $Cache.Add([System.Uri]::new($FullURL), $Auth, [System.Net.CredentialCache]::DefaultNetworkCredentials)
+                    $Request.Credentials = $Cache
+                    $Request.Timeout = 1000
+                    $Request.GetResponse() | Out-Null
+                    $CAEnrollmentEndpoint += @{
+                        'URL'  = $FullURL
+                        'Auth' = $Auth
+                    }
+                } catch {
+                    try {
+                        $Auth = 'NTLM'
+                        $FullURL = "https$URL"
+                        $Request = [System.Net.WebRequest]::Create($FullURL)
+                        $Cache = [System.Net.CredentialCache]::New()
+                        $Cache.Add([System.Uri]::new($FullURL), $Auth, [System.Net.CredentialCache]::DefaultNetworkCredentials)
+                        $Request.Credentials = $Cache
+                        $Request.Timeout = 1000
+                        $Request.GetResponse() | Out-Null
+                        $CAEnrollmentEndpoint += @{
+                            'URL'  = $FullURL
+                            'Auth' = $Auth
+                        }
+                    } catch {
+                        try {
+                            $Auth = 'Negotiate'
+                            $FullURL = "https$URL"
+                            $Request = [System.Net.WebRequest]::Create($FullURL)
+                            $Cache = [System.Net.CredentialCache]::New()
+                            $Cache.Add([System.Uri]::new($FullURL), $Auth, [System.Net.CredentialCache]::DefaultNetworkCredentials)
+                            $Request.Credentials = $Cache
+                            $Request.Timeout = 1000
+                            $Request.GetResponse() | Out-Null
+                            $CAEnrollmentEndpoint += @{
+                                'URL'  = $FullURL
+                                'Auth' = $Auth
+                            }
+                        } catch {
+                        }
+                    }
+                }
+            }
             [string]$CAFullName = "$($_.dNSHostName)\$($_.Name)"
             $CAHostname = $_.dNSHostName.split('.')[0]
-            # $CAName = $_.Name
             if ($Credential) {
                 $CAHostDistinguishedName = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Server $ForestGC -Credential $Credential).DistinguishedName
                 $CAHostFQDN = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Properties DnsHostname -Server $ForestGC -Credential $Credential).DnsHostname
@@ -38,11 +145,21 @@
                         $CertutilFlag = certutil -config $CAFullName -getreg policy\EditFlags
                     }
                 } catch {
-                    $AuditFilter = 'Failure'
+                    $SANFlag = 'Failure'
+                }
+                try {
+                    if ($Credential) {
+                        $CertutilInterfaceFlag = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg CA\InterfaceFlags } -ArgumentList $CAFullName
+                    } else {
+                        $CertutilInterfaceFlag = certutil -config $CAFullName -getreg CA\InterfaceFlags
+                    }
+                } catch {
+                    $InterfaceFlag = 'Failure'
                 }
             } else {
                 $AuditFilter = 'CA Unavailable'
                 $SANFlag = 'CA Unavailable'
+                $InterfaceFlag = 'CA Unavailable'
             }
             if ($CertutilAudit) {
                 try {
@@ -65,12 +182,21 @@
                     $SANFlag = 'No'
                 }
             }
+            if ($CertutilInterfaceFlag) {
+                [string]$InterfaceFlag = $CertutilInterfaceFlag | Select-String ' IF_ENFORCEENCRYPTICERTREQUEST -- 200 \('
+                if ($InterfaceFlag) {
+                    $InterfaceFlag = 'Yes'
+                } else {
+                    $InterfaceFlag = 'No'
+                }
+            }
             Add-Member -InputObject $_ -MemberType NoteProperty -Name AuditFilter -Value $AuditFilter -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAEnrollmentEndpoint -Value $CAEnrollmentEndpoint -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAFullName -Value $CAFullName -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAHostname -Value $CAHostname -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAHostDistinguishedName -Value $CAHostDistinguishedName -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name SANFlag -Value $SANFlag -Force
+            Add-Member -InputObject $_ -MemberType NoteProperty -Name InterfaceFlag -Value $InterfaceFlag -Force
         }
     }
 }

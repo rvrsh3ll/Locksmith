@@ -1,0 +1,35 @@
+# Create external help ZIP and CAB files for PowerShell.
+# Requires Windows to use the makecab command.
+---
+name: 📚 Create External Help
+
+on:
+  pull_request:
+  # push:
+  workflow_dispatch:
+
+jobs:
+  package_help:
+    # The New-ExternalHelpCab cmdlet uses makecab, which depends on Windows.
+    runs-on: windows-latest
+    steps:
+      - name: ✅ Checkout Repository
+        uses: actions/checkout@v4
+      - name: 📁 Display the Path
+        shell: pwsh
+        run: echo ${env:PATH}
+      - name: 🔢 Display the Version
+        shell: pwsh
+        run: $PSVersionTable
+      - name: 📖 Create and Package External PowerShell Help
+        shell: pwsh
+        run: |
+          Install-Module -Name PlatyPS -Scope CurrentUser -Force -SkipPublisherCheck
+          Import-Module -Name PlatyPS -Force
+          #Copy-Item ".\Help\en-US\Locksmith-help.xml" ".\Help\en-US"
+          $params = @{
+              CabFilesFolder  = ".\en-US"
+              LandingPagePath = ".\Docs\Locksmith.md"
+              OutputFolder    = ".\en-US"
+          }
+          New-ExternalHelpCab @params
