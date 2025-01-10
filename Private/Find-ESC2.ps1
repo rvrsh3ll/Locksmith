@@ -82,12 +82,12 @@ More info:
 "@
                     Fix                   = @"
 # Enable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 "@
                     Revert                = @"
 # Disable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
 "@
                     Technique             = 'ESC2'
