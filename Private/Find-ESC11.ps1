@@ -59,20 +59,20 @@ More info:
 '@
                 $Issue.Fix = @"
 # Enable the flag
-certutil -config $CAFullname -setreg CA\InterfaceFlags +IF_ENFORCEENCRYPTICERTREQUEST
+certutil -config '$CAFullname' -setreg CA\InterfaceFlags +IF_ENFORCEENCRYPTICERTREQUEST
 
 # Restart the Certificate Authority service
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
 }
 "@
                 $Issue.Revert = @"
 # Disable the flag
-certutil -config $CAFullname -setreg CA\InterfaceFlags -IF_ENFORCEENCRYPTICERTREQUEST
+certutil -config '$CAFullname' -setreg CA\InterfaceFlags -IF_ENFORCEENCRYPTICERTREQUEST
 
 # Restart the Certificate Authority service
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
 }
 "@
             }

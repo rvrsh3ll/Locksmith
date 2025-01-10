@@ -61,11 +61,11 @@ function Update-ESC1Remediation {
 #   to a smaller group or a single user/service account.
 
 # 2. Remove the ability to submit a SAN (aka disable "Supply in the request").
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Certificate-Name-Flag' = 0}
 
 # 3. Enable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 "@
 
@@ -74,11 +74,11 @@ Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 #   back to $($Issue.IdentityReference).
 
 # 2. Restore the ability to submit a SAN.
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Certificate-Name-Flag' = 1}
 
 # 3. Disable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
 "@
         }

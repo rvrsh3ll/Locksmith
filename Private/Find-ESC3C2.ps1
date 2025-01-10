@@ -70,12 +70,12 @@ More info:
 First, eliminate unused Enrollment Agent templates.
 Then, tightly scope any Enrollment Agent templates that remain and:
 # Enable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 "@
                     Revert                = @"
 # Disable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
 "@
                     Technique             = 'ESC3'

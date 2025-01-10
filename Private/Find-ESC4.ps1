@@ -108,16 +108,16 @@ More info:
 
 "@
                 Fix                   = @"
-`$Owner = New-Object System.Security.Principal.SecurityIdentifier(`'$PreferredOwner`')
-`$ACL = Get-Acl -Path `'AD:$($_.DistinguishedName)`'
+`$Owner = New-Object System.Security.Principal.SecurityIdentifier('$PreferredOwner')
+`$ACL = Get-Acl -Path 'AD:$($_.DistinguishedName)'
 `$ACL.SetOwner(`$Owner)
-Set-ACL -Path `'AD:$($_.DistinguishedName)`' -AclObject `$ACL
+Set-ACL -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL
 "@
                 Revert                = @"
-`$Owner = New-Object System.Security.Principal.SecurityIdentifier(`'$($_.nTSecurityDescriptor.Owner)`')
-`$ACL = Get-Acl -Path `'AD:$($_.DistinguishedName)`'
+`$Owner = New-Object System.Security.Principal.SecurityIdentifier('$($_.nTSecurityDescriptor.Owner)')
+`$ACL = Get-Acl -Path 'AD:$($_.DistinguishedName)'
 `$ACL.SetOwner(`$Owner)
-Set-ACL -Path `'AD:$($_.DistinguishedName)`' -AclObject `$ACL
+Set-ACL -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL
 "@
                 Technique             = 'ESC4'
             }
@@ -161,13 +161,13 @@ More info:
 
 "@
                     Fix                   = @"
-`$ACL = Get-Acl -Path `'AD:$($_.DistinguishedName)`'
+`$ACL = Get-Acl -Path 'AD:$($_.DistinguishedName)'
 foreach ( `$ace in `$ACL.access ) {
     if ( (`$ace.IdentityReference.Value -like '$($Principal.Value)' ) -and ( `$ace.ActiveDirectoryRights -notmatch '^ExtendedRight$') ) {
         `$ACL.RemoveAccessRule(`$ace) | Out-Null
     }
 }
-Set-Acl -Path `'AD:$($_.DistinguishedName)`' -AclObject `$ACL
+Set-Acl -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL
 "@
                     Revert                = '[TODO]'
                     Technique             = 'ESC4'
