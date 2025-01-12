@@ -3202,7 +3202,7 @@ function Set-RiskRating {
             # Default 'User' and 'Machine' templates are more dangerous
             $ESC15 = Find-ESC15 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers  -SkipRisk |
                 Where-Object { $_.Enabled -eq $true }
-            $ESC15Names = @('Machine', 'User')
+            $ESC15Names = @(($ESC15 | Where-Object Name -In @('Machine', 'User')).Name)
             if ($ESC15Names) {
                 $CheckedESC15Templates = @{}
                 foreach ($name in $ESC15Names) {
@@ -4381,7 +4381,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.1.1'
+    $Version = '2025.1.12'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
