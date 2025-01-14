@@ -29,8 +29,8 @@ Build-Module -ModuleName 'Locksmith' {
         Author               = 'Jake Hildreth'
         Copyright            = "(c) 2022 - $CopyrightYear. All rights reserved."
         Description          = 'A small tool to find and fix common misconfigurations in Active Directory Certificate Services.'
-        ProjectUri           = 'https://github.com/TrimarcJake/Locksmith'
-        IconUri              = 'https://raw.githubusercontent.com/TrimarcJake/Locksmith/main/Images/locksmith.ico'
+        ProjectUri           = 'https://github.com/jakehildreth/Locksmith'
+        IconUri              = 'https://raw.githubusercontent.com/jakehildreth/Locksmith/main/Images/locksmith.ico'
         PowerShellVersion    = '5.1'
         Tags                 = @('Windows', 'Locksmith', 'CA', 'PKI', 'ActiveDirectory', 'CertificateServices', 'ADCS')
     }

@@ -12,12 +12,12 @@
 A small tool built to find and fix common misconfigurations in Active Directory Certificate Services.
 
 <!-- locksmith-badges-start -->
-![GitHub release](https://img.shields.io/github/v/release/trimarcjake/locksmith?sort=semver)
-![GitHub top language](https://img.shields.io/github/languages/top/trimarcjake/locksmith)
+![GitHub release](https://img.shields.io/github/v/release/jakehildreth/locksmith?sort=semver)
+![GitHub top language](https://img.shields.io/github/languages/top/jakehildreth/locksmith)
 ![PowerShell Gallery Platform Support](https://img.shields.io/powershellgallery/p/locksmith)
-[![GitHub contributors](https://img.shields.io/github/contributors/trimarcjake/locksmith.svg)](https://github.com/trimarcjake/locksmith/graphs/contributors/)
+[![GitHub contributors](https://img.shields.io/github/contributors/jakehildreth/locksmith.svg)](https://github.com/jakehildreth/locksmith/graphs/contributors/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/trimarcjake/Locksmith/powershell.yml?logo=github&label=PSScriptAnalyzer)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/jakehildreth/Locksmith/powershell.yml?logo=github&label=PSScriptAnalyzer)
 ![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/locksmith?logo=powershell&label=PowerShell%20Gallery%20Downloads&color=blue)
 <!-- locksmith-badges-end -->
 ## Contents
@@ -46,7 +46,7 @@ Install-Module -Name Locksmith -Scope CurrentUser
 
 ### Alternative Installation Methods
 1. Download and Use the Module Without Installing It
-   1. Download the [latest module version](https://github.com/TrimarcJake/Locksmith/releases/latest/download/Locksmith.zip).
+   1. Download the [latest module version](https://github.com/jakehildreth/Locksmith/releases/latest/download/Locksmith.zip).
    2. Open a PowerShell prompt to the location of the extracted file and run:
    ```powershell
    Unblock-File .\Locksmith.zip # if necessary to unblock the download
@@ -55,7 +55,7 @@ Install-Module -Name Locksmith -Scope CurrentUser
    Invoke-Locksmith
    ```
 2. Download the Standalone Script Without Module
-   1. Download the latest monolithic (all-in-one) script version: [https://github.com/TrimarcJake/Locksmith/releases/latest/download/Invoke-Locksmith.zip](https://github.com/TrimarcJake/Locksmith/releases/latest/download/Invoke-Locksmith.zip).
+   1. Download the latest monolithic (all-in-one) script version: [https://github.com/jakehildreth/Locksmith/releases/latest/download/Invoke-Locksmith.zip](https://github.com/jakehildreth/Locksmith/releases/latest/download/Invoke-Locksmith.zip).
    2. Open a PowerShell prompt to the location of the downloaded file and run:
    ```powershell
    Unblock-File .\Invoke-Locksmith.zip
@@ -80,7 +80,7 @@ Invoke-Locksmith
 # Script Syntax
 .\Invoke-Locksmith.ps1
 ```
-Example Output for Mode 0: <https://github.com/TrimarcJake/Locksmith/blob/main//Docs/Examples/Mode0.md>
+Example Output for Mode 0: <https://github.com/jakehildreth/Locksmith/blob/main//Docs/Examples/Mode0.md>
 
 <a name="Mode1" id="Mode1"></a>
 
@@ -95,7 +95,7 @@ Invoke-Locksmith -Mode 1
 # Script Syntax
 .\Invoke-Locksmith.ps1 -Mode 1
 ```
-Example Output for Mode 1: <https://github.com/TrimarcJake/Locksmith/blob/main/Docs/Examples/Mode1.md>
+Example Output for Mode 1: <https://github.com/jakehildreth/Locksmith/blob/main/Docs/Examples/Mode1.md>
 
 <a name="Mode2" id="Mode2"></a>
 
@@ -110,7 +110,7 @@ Invoke-Locksmith -Mode 2
 # Script Syntax
 .\Invoke-Locksmith.ps1 -Mode 2
 ```
-Example Output for Mode 2: <https://github.com/TrimarcJake/Locksmith/blob/main/Docs/Examples/Mode2.md>
+Example Output for Mode 2: <https://github.com/jakehildreth/Locksmith/blob/main/Docs/Examples/Mode2.md>
 
 <a name="Mode3" id="Mode3"></a>
 
@@ -124,7 +124,7 @@ Invoke-Locksmith -Mode 3
 # Script Syntax
 .\Invoke-Locksmith.ps1 -Mode 3
 ```
-Example Output for Mode 3: <https://github.com/TrimarcJake/Locksmith/blob/main/Docs/Examples/Mode3.md>
+Example Output for Mode 3: <https://github.com/jakehildreth/Locksmith/blob/main/Docs/Examples/Mode3.md>
 
 <a name="Mode4" id="Mode4"></a>
 
@@ -139,7 +139,7 @@ Invoke-Locksmith -Mode 4
 # Script Syntax
 .\Invoke-Locksmith.ps1 -Mode 4
 ```
-Example Output for Mode 4: <https://github.com/TrimarcJake/Locksmith/blob/main/Docs/Examples/Mode4.md>
+Example Output for Mode 4: <https://github.com/jakehildreth/Locksmith/blob/main/Docs/Examples/Mode4.md>
 
 <a name="Scans" id="Scans"></a>
 
