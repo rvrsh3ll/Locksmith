@@ -9,8 +9,8 @@
 # mkdocs.yml
 ---
 site_name: "Locksmith"
-site_url: "https://trimarcjake.github.io/Locksmith"
-repo_url: "https://github.com/TrimarcJake/Locksmith"
+site_url: "https://jakehildreth.github.io/Locksmith"
+repo_url: "https://github.com/jakehildreth/Locksmith"
 repo_name: "TrimarcJake/Locksmith"
 # edit_uri: edit/main/docs/
 # edit_uri_template:

@@ -2721,7 +2721,7 @@ function New-Dictionary {
             Summary       = ''
             FindIt        = { Find-AuditingIssue }
             FixIt         = { Write-Output 'Add code to fix the vulnerable configuration.' }
-            ReferenceUrls = @('https://github.com/TrimarcJake/Locksmith', 'https://techcommunity.microsoft.com/t5/ask-the-directory-services-team/designing-and-implementing-a-pki-part-i-design-and-planning/ba-p/396953')
+            ReferenceUrls = @('https://github.com/jakehildreth/Locksmith', 'https://techcommunity.microsoft.com/t5/ask-the-directory-services-team/designing-and-implementing-a-pki-part-i-design-and-planning/ba-p/396953')
         }
     )
     Return $Dictionary
@@ -3647,7 +3647,7 @@ function Test-IsRecentVersion {
         Latest Version:     2024.12.11
         Publishing Date:    01/28/2024 12:47:18
         Install Module:     Install-Module -Name Locksmith
-        Standalone Script:  https://github.com/trimarcjake/locksmith/releases/download/v2.6/Invoke-Locksmith.zip
+        Standalone Script:  https://github.com/jakehildreth/locksmith/releases/download/v2.6/Invoke-Locksmith.zip
     #>
     [CmdletBinding()]
     [OutputType([boolean])]
@@ -3664,7 +3664,7 @@ function Test-IsRecentVersion {
     $Version = $Version.Replace('v', '')
     try {
         # Checking the most recent release in GitHub, but we could also use PowerShell Gallery.
-        $Uri = "https://api.github.com/repos/trimarcjake/locksmith/releases"
+        $Uri = "https://api.github.com/repos/jakehildreth/locksmith/releases"
         $Releases = Invoke-RestMethod -Uri $uri -Method Get -DisableKeepAlive -ErrorAction Stop
         $LatestRelease = $Releases | Sort-Object -Property Published_At -Descending | Select-Object -First 1
         # Get the release date of the currently running version via the version parameter
@@ -4342,7 +4342,7 @@ function Invoke-Locksmith {
     The Windows PowerShell cmdlet Restart-Service requires RunAsAdministrator.
     #>
 
-    [CmdletBinding(HelpUri = 'https://trimarcjake.github.io/Locksmith/Invoke-Locksmith')]
+    [CmdletBinding(HelpUri = 'https://jakehildreth.github.io/Locksmith/Invoke-Locksmith')]
     param (
         #[string]$Forest, # Not used yet
         #[string]$InputPath, # Not used yet
@@ -4381,7 +4381,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.1.10'
+    $Version = '2025.1.14'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
