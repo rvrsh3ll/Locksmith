@@ -66,7 +66,7 @@ function Invoke-Scans {
             [array]$Scans = ($Dictionary | Select-Object Name, Category, Subcategory | Out-GridView -PassThru -Title $GridViewTitle).Name | Sort-Object -Property Name
         } else {
             # To Do: Check for admin and prompt to install features/modules or revert to 'All'.
-            Write-Information "Out-GridView and Out-ConsoleGridView were not found on your system. Defaulting to `'All`'."
+            Write-Information "Out-GridView and Out-ConsoleGridView were not found on your system. Defaulting to 'All'."
             $Scans = 'All'
         }
     }

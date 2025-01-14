@@ -174,15 +174,15 @@ function Find-AuditingIssue {
             Technique         = 'DETECT'
             Issue             = "Auditing is not fully enabled on $($_.CAFullName). Important security events may go unnoticed."
             Fix               = @"
-certutil.exe -config `'$($_.CAFullname)`' -setreg `'CA\AuditFilter`' 127
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+certutil.exe -config '$($_.CAFullname)' -setreg CA\AuditFilter 127
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name 'certsvc' | Restart-Service -Force
 }
 "@
             Revert            = @"
-certutil.exe -config $($_.CAFullname) -setreg CA\AuditFilter  $($_.AuditFilter)
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+certutil.exe -config '$($_.CAFullname)' -setreg CA\AuditFilter $($_.AuditFilter)
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name 'certsvc' | Restart-Service -Force
 }
 "@
         }
@@ -282,12 +282,12 @@ More info:
 "@
                     Fix                   = @"
 # Enable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 "@
                     Revert                = @"
 # Disable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
 "@
                     Technique             = 'ESC1'
@@ -366,20 +366,20 @@ More info:
 '@
                 $Issue.Fix = @"
 # Enable the flag
-certutil -config $CAFullname -setreg CA\InterfaceFlags +IF_ENFORCEENCRYPTICERTREQUEST
+certutil -config '$CAFullname' -setreg CA\InterfaceFlags +IF_ENFORCEENCRYPTICERTREQUEST
 
 # Restart the Certificate Authority service
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
 }
 "@
                 $Issue.Revert = @"
 # Disable the flag
-certutil -config $CAFullname -setreg CA\InterfaceFlags -IF_ENFORCEENCRYPTICERTREQUEST
+certutil -config '$CAFullname' -setreg CA\InterfaceFlags -IF_ENFORCEENCRYPTICERTREQUEST
 
 # Restart the Certificate Authority service
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
 }
 "@
             }
@@ -474,12 +474,12 @@ More info:
 "@
                                 Fix                   = @"
 # Enable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 "@
                                 Revert                = @"
 # Disable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
 "@
                                 Technique             = 'ESC13'
@@ -681,12 +681,12 @@ More info:
 "@
                     Fix                   = @"
 # Enable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 "@
                     Revert                = @"
 # Disable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
 "@
                     Technique             = 'ESC2'
@@ -772,12 +772,12 @@ More info:
 "@
                     Fix                   = @"
 # Enable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 "@
                     Revert                = @"
 # Disable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
 "@
                     Technique             = 'ESC3'
@@ -865,12 +865,12 @@ More info:
 First, eliminate unused Enrollment Agent templates.
 Then, tightly scope any Enrollment Agent templates that remain and:
 # Enable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 "@
                     Revert                = @"
 # Disable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
 "@
                     Technique             = 'ESC3'
@@ -996,16 +996,16 @@ More info:
 
 "@
                 Fix                   = @"
-`$Owner = New-Object System.Security.Principal.SecurityIdentifier(`'$PreferredOwner`')
-`$ACL = Get-Acl -Path `'AD:$($_.DistinguishedName)`'
+`$Owner = New-Object System.Security.Principal.SecurityIdentifier('$PreferredOwner')
+`$ACL = Get-Acl -Path 'AD:$($_.DistinguishedName)'
 `$ACL.SetOwner(`$Owner)
-Set-ACL -Path `'AD:$($_.DistinguishedName)`' -AclObject `$ACL
+Set-ACL -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL
 "@
                 Revert                = @"
-`$Owner = New-Object System.Security.Principal.SecurityIdentifier(`'$($_.nTSecurityDescriptor.Owner)`')
-`$ACL = Get-Acl -Path `'AD:$($_.DistinguishedName)`'
+`$Owner = New-Object System.Security.Principal.SecurityIdentifier('$($_.nTSecurityDescriptor.Owner)')
+`$ACL = Get-Acl -Path 'AD:$($_.DistinguishedName)'
 `$ACL.SetOwner(`$Owner)
-Set-ACL -Path `'AD:$($_.DistinguishedName)`' -AclObject `$ACL
+Set-ACL -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL
 "@
                 Technique             = 'ESC4'
             }
@@ -1050,13 +1050,13 @@ More info:
 
 "@
                     Fix                   = @"
-`$ACL = Get-Acl -Path `'AD:$($_.DistinguishedName)`'
+`$ACL = Get-Acl -Path 'AD:$($_.DistinguishedName)'
 foreach ( `$ace in `$ACL.access ) {
     if ( (`$ace.IdentityReference.Value -like '$($Principal.Value)' ) -and ( `$ace.ActiveDirectoryRights -notmatch '^ExtendedRight$') ) {
         `$ACL.RemoveAccessRule(`$ace) | Out-Null
     }
 }
-Set-Acl -Path `'AD:$($_.DistinguishedName)`' -AclObject `$ACL
+Set-Acl -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL
 "@
                     Revert                = '[TODO]'
                     Technique             = 'ESC4'
@@ -1231,16 +1231,16 @@ More info:
 
 "@
                 Fix                   = @"
-`$Owner = New-Object System.Security.Principal.SecurityIdentifier(`'$PreferredOwner`')
-`$ACL = Get-Acl -Path `'AD:$($_.DistinguishedName)`'
+`$Owner = New-Object System.Security.Principal.SecurityIdentifier('$PreferredOwner')
+`$ACL = Get-Acl -Path 'AD:$($_.DistinguishedName)'
 `$ACL.SetOwner(`$Owner)
-Set-ACL -Path `'AD:$($_.DistinguishedName)`' -AclObject `$ACL
+Set-ACL -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL
 "@
                 Revert                = "
-`$Owner = New-Object System.Security.Principal.SecurityIdentifier(`'$($_.nTSecurityDescriptor.Owner)`')
-`$ACL = Get-Acl -Path `'AD:$($_.DistinguishedName)`'
+`$Owner = New-Object System.Security.Principal.SecurityIdentifier('$($_.nTSecurityDescriptor.Owner)')
+`$ACL = Get-Acl -Path 'AD:$($_.DistinguishedName)'
 `$ACL.SetOwner(`$Owner)
-Set-ACL -Path `'AD:$($_.DistinguishedName)`' -AclObject `$ACL"
+Set-ACL -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL"
                 Technique             = 'ESC5'
             } # end switch ($_.objectClass)
             if ($SkipRisk -eq $false) {
@@ -1331,14 +1331,14 @@ $IssueDetail
 
 "@
                     Fix                   = @"
-`$ACL = Get-Acl -Path `'AD:$($_.DistinguishedName)`'
+`$ACL = Get-Acl -Path 'AD:$($_.DistinguishedName)'
 foreach ( `$ace in `$ACL.access ) {
     if ( (`$ace.IdentityReference.Value -like '$($Principal.Value)' ) -and
         ( `$ace.ActiveDirectoryRights -notmatch '^ExtendedRight$') ) {
         `$ACL.RemoveAccessRule(`$ace) | Out-Null
     }
 }
-Set-Acl -Path `'AD:$($_.DistinguishedName)`' -AclObject `$ACL
+Set-Acl -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL
 "@
                     Revert                = '[TODO]'
                     Technique             = 'ESC5'
@@ -1416,20 +1416,20 @@ More info:
 "@
                 $Issue.Fix = @"
 # Disable the flag
-certutil -config $CAFullname -setreg policy\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2
+certutil -config '$CAFullname' -setreg policy\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2
 
 # Restart the Certificate Authority service
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
 }
 "@
                 $Issue.Revert = @"
 # Enable the flag
-certutil -config $CAFullname -setreg policy\EditFlags +EDITF_ATTRIBUTESUBJECTALTNAME2
+certutil -config '$CAFullname' -setreg policy\EditFlags +EDITF_ATTRIBUTESUBJECTALTNAME2
 
 # Restart the Certificate Authority service
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
 }
 "@
             }
@@ -2453,7 +2453,7 @@ function Invoke-Scans {
         }
         else {
             # To Do: Check for admin and prompt to install features/modules or revert to 'All'.
-            Write-Information "Out-GridView and Out-ConsoleGridView were not found on your system. Defaulting to `'All`'."
+            Write-Information "Out-GridView and Out-ConsoleGridView were not found on your system. Defaulting to 'All'."
             $Scans = 'All'
         }
     }
@@ -2721,7 +2721,7 @@ function New-Dictionary {
             Summary       = ''
             FindIt        = { Find-AuditingIssue }
             FixIt         = { Write-Output 'Add code to fix the vulnerable configuration.' }
-            ReferenceUrls = @('https://github.com/TrimarcJake/Locksmith', 'https://techcommunity.microsoft.com/t5/ask-the-directory-services-team/designing-and-implementing-a-pki-part-i-design-and-planning/ba-p/396953')
+            ReferenceUrls = @('https://github.com/jakehildreth/Locksmith', 'https://techcommunity.microsoft.com/t5/ask-the-directory-services-team/designing-and-implementing-a-pki-part-i-design-and-planning/ba-p/396953')
         }
     )
     Return $Dictionary
@@ -3202,7 +3202,7 @@ function Set-RiskRating {
             # Default 'User' and 'Machine' templates are more dangerous
             $ESC15 = Find-ESC15 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers  -SkipRisk |
                 Where-Object { $_.Enabled -eq $true }
-            $ESC15Names = @('Machine', 'User')
+            $ESC15Names = @(($ESC15 | Where-Object Name -In @('Machine', 'User')).Name)
             if ($ESC15Names) {
                 $CheckedESC15Templates = @{}
                 foreach ($name in $ESC15Names) {
@@ -3647,7 +3647,7 @@ function Test-IsRecentVersion {
         Latest Version:     2024.12.11
         Publishing Date:    01/28/2024 12:47:18
         Install Module:     Install-Module -Name Locksmith
-        Standalone Script:  https://github.com/trimarcjake/locksmith/releases/download/v2.6/Invoke-Locksmith.zip
+        Standalone Script:  https://github.com/jakehildreth/locksmith/releases/download/v2.6/Invoke-Locksmith.zip
     #>
     [CmdletBinding()]
     [OutputType([boolean])]
@@ -3664,7 +3664,7 @@ function Test-IsRecentVersion {
     $Version = $Version.Replace('v', '')
     try {
         # Checking the most recent release in GitHub, but we could also use PowerShell Gallery.
-        $Uri = "https://api.github.com/repos/trimarcjake/locksmith/releases"
+        $Uri = "https://api.github.com/repos/jakehildreth/locksmith/releases"
         $Releases = Invoke-RestMethod -Uri $uri -Method Get -DisableKeepAlive -ErrorAction Stop
         $LatestRelease = $Releases | Sort-Object -Property Published_At -Descending | Select-Object -First 1
         # Get the release date of the currently running version via the version parameter
@@ -3794,11 +3794,11 @@ function Update-ESC1Remediation {
 #   to a smaller group or a single user/service account.
 
 # 2. Remove the ability to submit a SAN (aka disable "Supply in the request").
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Certificate-Name-Flag' = 0}
 
 # 3. Enable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 "@
 
@@ -3807,11 +3807,11 @@ Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
 #   back to $($Issue.IdentityReference).
 
 # 2. Restore the ability to submit a SAN.
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Certificate-Name-Flag' = 1}
 
 # 3. Disable Manager Approval
-`$Object = `'$($_.DistinguishedName)`'
+`$Object = '$($_.DistinguishedName)'
 Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
 "@
         }
@@ -4342,7 +4342,7 @@ function Invoke-Locksmith {
     The Windows PowerShell cmdlet Restart-Service requires RunAsAdministrator.
     #>
 
-    [CmdletBinding(HelpUri = 'https://trimarcjake.github.io/Locksmith/Invoke-Locksmith')]
+    [CmdletBinding(HelpUri = 'https://jakehildreth.github.io/Locksmith/Invoke-Locksmith')]
     param (
         #[string]$Forest, # Not used yet
         #[string]$InputPath, # Not used yet
@@ -4381,7 +4381,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.1.1'
+    $Version = '2025.1.14'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|

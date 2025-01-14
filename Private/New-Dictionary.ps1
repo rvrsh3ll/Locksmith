@@ -158,7 +158,7 @@ function New-Dictionary {
             Summary       = ''
             FindIt        = { Find-AuditingIssue }
             FixIt         = { Write-Output 'Add code to fix the vulnerable configuration.' }
-            ReferenceUrls = @('https://github.com/TrimarcJake/Locksmith', 'https://techcommunity.microsoft.com/t5/ask-the-directory-services-team/designing-and-implementing-a-pki-part-i-design-and-planning/ba-p/396953')
+            ReferenceUrls = @('https://github.com/jakehildreth/Locksmith', 'https://techcommunity.microsoft.com/t5/ask-the-directory-services-team/designing-and-implementing-a-pki-part-i-design-and-planning/ba-p/396953')
         }
     )
     Return $Dictionary

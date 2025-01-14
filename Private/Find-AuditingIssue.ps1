@@ -48,15 +48,15 @@
             Technique         = 'DETECT'
             Issue             = "Auditing is not fully enabled on $($_.CAFullName). Important security events may go unnoticed."
             Fix               = @"
-certutil.exe -config `'$($_.CAFullname)`' -setreg `'CA\AuditFilter`' 127
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+certutil.exe -config '$($_.CAFullname)' -setreg CA\AuditFilter 127
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name 'certsvc' | Restart-Service -Force
 }
 "@
             Revert            = @"
-certutil.exe -config $($_.CAFullname) -setreg CA\AuditFilter  $($_.AuditFilter)
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+certutil.exe -config '$($_.CAFullname)' -setreg CA\AuditFilter $($_.AuditFilter)
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name 'certsvc' | Restart-Service -Force
 }
 "@
         }

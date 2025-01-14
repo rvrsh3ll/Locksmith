@@ -62,20 +62,20 @@ More info:
 "@
                 $Issue.Fix = @"
 # Disable the flag
-certutil -config $CAFullname -setreg policy\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2
+certutil -config '$CAFullname' -setreg policy\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2
 
 # Restart the Certificate Authority service
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
 }
 "@
                 $Issue.Revert = @"
 # Enable the flag
-certutil -config $CAFullname -setreg policy\EditFlags +EDITF_ATTRIBUTESUBJECTALTNAME2
+certutil -config '$CAFullname' -setreg policy\EditFlags +EDITF_ATTRIBUTESUBJECTALTNAME2
 
 # Restart the Certificate Authority service
-Invoke-Command -ComputerName `'$($_.dNSHostName)`' -ScriptBlock {
-    Get-Service -Name `'certsvc`' | Restart-Service -Force
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
 }
 "@
             }
