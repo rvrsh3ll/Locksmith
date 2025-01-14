@@ -3202,7 +3202,7 @@ function Set-RiskRating {
             # Default 'User' and 'Machine' templates are more dangerous
             $ESC15 = Find-ESC15 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers  -SkipRisk |
                 Where-Object { $_.Enabled -eq $true }
-            $ESC15Names = @('Machine', 'User')
+            $ESC15Names = @(($ESC15 | Where-Object Name -In @('Machine', 'User')).Name)
             if ($ESC15Names) {
                 $CheckedESC15Templates = @{}
                 foreach ($name in $ESC15Names) {
