@@ -1,10 +1,10 @@
-﻿function Invoke-Locksmith {
+function Invoke-Locksmith {
     <#
     .SYNOPSIS
     Finds the most common malconfigurations of Active Directory Certificate Services (AD CS).
 
     .DESCRIPTION
-    Locksmith uses the Active Directory (AD) Powershell (PS) module to identify 6 misconfigurations
+    Locksmith uses the Active Directory (AD) Powershell (PS) module to identify 10 misconfigurations
     commonly found in Enterprise mode AD CS installations.
 
     .COMPONENT
@@ -42,7 +42,7 @@
     Specify which scans you want to run. Available scans: 'All' or Auditing, ESC1, ESC2, ESC3, ESC4, ESC5, ESC6, ESC8, or 'PromptMe'
 
     -Scans All
-    Run all scans (default)
+    Run all scans (default).
 
     -Scans PromptMe
     Presents a grid view of the available scan types that can be selected and run them after you click OK.
@@ -55,39 +55,76 @@
 
     .OUTPUTS
     Output types:
-    1. Console display of identified issues
-    2. Console display of identified issues and their fixes
-    3. CSV containing all identified issues
-    4. CSV containing all identified issues and their fixes
+    1. Console display of identified issues.
+    2. Console display of identified issues and their fixes.
+    3. CSV containing all identified issues.
+    4. CSV containing all identified issues and their fixes.
+
+    .EXAMPLE
+    Invoke-Locksmith -Mode 0 -Scans All -OutputPath 'C:\Temp'
+
+    Finds all malconfigurations and displays them in the console.
+
+    .EXAMPLE
+    Invoke-Locksmith -Mode 2 -Scans All -OutputPath 'C:\Temp'
+
+    Finds all malconfigurations and displays them in the console. The findings are saved in a CSV file in C:\Temp.
 
     .NOTES
-    Windows PowerShell cmdlet Restart-Service requires RunAsAdministrator
+    The Windows PowerShell cmdlet Restart-Service requires RunAsAdministrator.
     #>
 
-    [CmdletBinding()]
+    [CmdletBinding(HelpUri = 'https://jakehildreth.github.io/Locksmith/Invoke-Locksmith')]
     param (
-        [string]$Forest,
-        [string]$InputPath,
-        [int]$Mode = 0,
+        #[string]$Forest, # Not used yet
+        #[string]$InputPath, # Not used yet
+
+        # The mode to run Locksmith in. Defaults to 0.
         [Parameter()]
-            [ValidateSet('Auditing','ESC1','ESC2','ESC3','ESC4','ESC5','ESC6','ESC8','All','PromptMe')]
-            [array]$Scans = 'All',
-        [string]$OutputPath = (Get-Location).Path,
+        [ValidateSet(0, 1, 2, 3, 4)]
+        [int]$Mode = 0,
+
+        # The scans to run. Defaults to 'All'.
+        [Parameter()]
+        [ValidateSet('Auditing',
+            'ESC1',
+            'ESC2',
+            'ESC3',
+            'ESC4',
+            'ESC5',
+            'ESC6',
+            'ESC8',
+            'ESC11',
+            'ESC13',
+            'ESC15',
+            'EKUwu',
+            'All',
+            'PromptMe'
+        )]
+        [array]$Scans = 'All',
+
+        # The directory to save the output in (defaults to the current working directory).
+        [Parameter()]
+        [ValidateScript({ Test-Path -Path $_ -PathType Container })]
+        [string]$OutputPath = $PWD,
+
+        # The credential to use for working with ADCS.
+        [Parameter()]
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2023.12'
-    $LogoPart1 = @"
+    $Version = '<ModuleVersion>'
+    $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
     |_____ |_____| |_____  |    \_ ______| |  |  | __|__    |    |     |
-"@
-    $LogoPart2 = @"
+'@
+    $LogoPart2 = @'
         .--.                  .--.                  .--.
        /.-. '----------.     /.-. '----------.     /.-. '----------.
        \'-' .---'-''-'-'     \'-' .--'--''-'-'     \'-' .--'--'-''-'
         '--'                  '--'                  '--'
-"@
+'@
     $VersionBanner = "                                                          v$Version"
 
     Write-Host $LogoPart1 -ForegroundColor Magenta
@@ -95,63 +132,93 @@
     Write-Host $VersionBanner -ForegroundColor Red
 
     # Check if ActiveDirectory PowerShell module is available, and attempt to install if not found
-    if (-not(Get-Module -Name 'ActiveDirectory' -ListAvailable)) {
-        if (Test-IsElevated) {
-            $OS = (Get-CimInstance -ClassName Win32_OperatingSystem).ProductType
-            # 1 - workstation, 2 - domain controller, 3 - non-dc server
-            if ($OS -gt 1) {
-                # Attempt to install ActiveDirectory PowerShell module for Windows Server OSes, works with Windows Server 2012 R2 through Windows Server 2022
-                Install-WindowsFeature -Name RSAT-AD-PowerShell
-            } else {
-                # Attempt to install ActiveDirectory PowerShell module for Windows Desktop OSes
-                Add-WindowsCapability -Name Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0 -Online
-            }
-        }
-        else {
-            Write-Warning -Message "The ActiveDirectory PowerShell module is required for Locksmith, but is not installed. Please launch an elevated PowerShell session to have this module installed for you automatically."
-            # The goal here is to exit the script without closing the PowerShell window. Need to test.
-            Return
-        }
+    $RSATInstalled = Test-IsRSATInstalled
+    if ($RSATInstalled) {
+        # Continue
+    } else {
+        Install-RSATADPowerShell
     }
 
     # Exit if running in restricted admin mode without explicit credentials
     if (!$Credential -and (Get-RestrictedAdminModeSetting)) {
         Write-Warning "Restricted Admin Mode appears to be in place, re-run with the '-Credential domain\user' option"
-        break;
+        break
     }
 
-    # Initial variables
-    $AllDomainsCertPublishersSIDs = @()
-    $AllDomainsDomainAdminSIDs = @()
+    ### Initial variables
+    # For output filenames
+    [string]$FilePrefix = "Locksmith $(Get-Date -Format 'yyyy-MM-dd hh-mm-ss')"
+
+    # Extended Key Usages for client authentication. A requirement for ESC1, ESC3 Condition 2, and ESC13
     $ClientAuthEKUs = '1\.3\.6\.1\.5\.5\.7\.3\.2|1\.3\.6\.1\.5\.2\.3\.4|1\.3\.6\.1\.4\.1\.311\.20\.2\.2|2\.5\.29\.37\.0'
-    $DangerousRights = 'GenericAll|WriteDacl|WriteOwner|WriteProperty'
-    $EnrollmentAgentEKU = '1\.3\.6\.1\.4\.1\.311\.20\.2\.1'
-    $SafeObjectTypes = '0e10c968-78fb-11d2-90d4-00c04f79dc55|a05b8cc2-17bc-4802-a710-e7c15ab866a2'
-    $SafeOwners = '-512$|-519$|-544$|-18$|-517$|-500$'
-    $SafeUsers = '-512$|-519$|-544$|-18$|-517$|-500$|-516$|-9$|-526$|-527$|S-1-5-10'
-    $UnsafeOwners = 'S-1-1-0|-11$|-513$|-515$'
-    $UnsafeUsers = 'S-1-1-0|-11$|-513$|-515$'
 
-    # Generated variables
-    $Dictionary = New-Dictionary
-    $ForestGC = $(Get-ADDomainController -Discover -Service GlobalCatalog -ForceDiscover | Select-Object -ExpandProperty Hostname) + ":3268"
-    $DNSRoot = [string]((Get-ADForest).RootDomain | Get-ADDomain).DNSRoot
-    $EnterpriseAdminsSID = ([string]((Get-ADForest).RootDomain | Get-ADDomain).DomainSID) + '-519'
-    $PreferredOwner = New-Object System.Security.Principal.SecurityIdentifier($EnterpriseAdminsSID)
-    $DomainSIDs = (Get-ADForest).Domains | ForEach-Object { (Get-ADDomain $_).DomainSID.Value }
-    $DomainSIDs | ForEach-Object {
-        $AllDomainsCertPublishersSIDs += $_ + '-517'
-        $AllDomainsDomainAdminSIDs += $_ + '-512'
-    }
+    # GenericAll, WriteDacl, and WriteOwner all permit full control of an AD object.
+    # WriteProperty may or may not permit full control depending the specific property and AD object type.
+    $DangerousRights = 'GenericAll|WriteDacl|WriteOwner|WriteProperty'
+
+    # Extended Key Usage for client authentication. A requirement for ESC3.
+    $EnrollmentAgentEKU = '1\.3\.6\.1\.4\.1\.311\.20\.2\.1'
+
+    # The well-known GUIDs for Enroll and AutoEnroll rights on AD CS templates.
+    $SafeObjectTypes = '0e10c968-78fb-11d2-90d4-00c04f79dc55|a05b8cc2-17bc-4802-a710-e7c15ab866a2'
+
+    <#
+        -519$ = Enterprise Admins group
+    #>
+    $SafeOwners = '-519$'
+
+    <#
+        -512$    = Domain Admins group
+        -519$    = Enterprise Admins group
+        -544$    = Administrators group
+        -18$     = SYSTEM
+        -517$    = Cert Publishers
+        -500$    = Built-in Administrator
+        -516$    = Domain Controllers
+        -521$    = Read-Only Domain Controllers
+        -9$      = Enterprise Domain Controllers
+        -498$    = Enterprise Read-Only Domain Controllers
+        -526$    = Key Admins
+        -527$    = Enterprise Key Admins
+        S-1-5-10 = SELF
+    #>
+    $SafeUsers = '-512$|-519$|-544$|-18$|-517$|-500$|-516$|-521$|-498$|-9$|-526$|-527$|S-1-5-10'
+
+    <#
+        S-1-0-0      = NULL SID
+        S-1-1-0      = Everyone
+        S-1-5-7      = Anonymous Logon
+        S-1-5-32-545 = BUILTIN\Users
+        S-1-5-11     = Authenticated Users
+        -513$        = Domain Users
+        -515$        = Domain Computers
+    #>
+    $UnsafeUsers = 'S-1-0-0|S-1-1-0|S-1-5-7|S-1-5-32-545|S-1-5-11|-513$|-515$'
+
+    ### Generated variables
+    # $Dictionary = New-Dictionary
+
+    $Forest = Get-ADForest
+    $ForestGC = $(Get-ADDomainController -Discover -Service GlobalCatalog -ForceDiscover | Select-Object -ExpandProperty Hostname) + ':3268'
+    # $DNSRoot = [string]($Forest.RootDomain | Get-ADDomain).DNSRoot
+    $EnterpriseAdminsSID = ([string]($Forest.RootDomain | Get-ADDomain).DomainSID) + '-519'
+    $PreferredOwner = [System.Security.Principal.SecurityIdentifier]::New($EnterpriseAdminsSID)
+    # $DomainSIDs = $Forest.Domains | ForEach-Object { (Get-ADDomain $_).DomainSID.Value }
 
     # Add SIDs of (probably) Safe Users to $SafeUsers
     Get-ADGroupMember $EnterpriseAdminsSID | ForEach-Object {
         $SafeUsers += '|' + $_.SID.Value
     }
 
-    (Get-ADForest).Domains | ForEach-Object {
+    $Forest.Domains | ForEach-Object {
         $DomainSID = (Get-ADDomain $_).DomainSID.Value
-        $SafeGroupRIDs = @('-517','-512')
+        <#
+            -517 = Cert Publishers
+            -512 = Domain Admins group
+        #>
+        $SafeGroupRIDs = @('-517', '-512')
+
+        # Administrators group
         $SafeGroupSIDs = @('S-1-5-32-544')
         foreach ($rid in $SafeGroupRIDs ) {
             $SafeGroupSIDs += $DomainSID + $rid
@@ -163,6 +230,7 @@
             $SafeUsers += '|' + $user
         }
     }
+    $SafeUsers = $SafeUsers.Replace('||', '|')
 
     if ($Credential) {
         $Targets = Get-Target -Credential $Credential
@@ -173,32 +241,50 @@
     Write-Host "Gathering AD CS Objects from $($Targets)..."
     if ($Credential) {
         $ADCSObjects = Get-ADCSObject -Targets $Targets -Credential $Credential
-        Set-AdditionalCAProperty -ADCSObjects $ADCSObjects -Credential $Credential
-        $ADCSObjects += Get-CAHostObject -ADCSObjects $ADCSObjects -Credential $Credential
-        $CAHosts = Get-CAHostObject -ADCSObjects $ADCSObjects -Credential $Credential
-        $CAHosts | ForEach-Object { $SafeUsers += '|' + $_.Name }
+        Set-AdditionalCAProperty -ADCSObjects $ADCSObjects -Credential $Credential -ForestGC $ForestGC
+        $CAHosts = Get-CAHostObject -ADCSObjects $ADCSObjects -Credential $Credential -ForestGC $ForestGC
+        $ADCSObjects += $CAHosts
     } else {
         $ADCSObjects = Get-ADCSObject -Targets $Targets
-        Set-AdditionalCAProperty -ADCSObjects $ADCSObjects
-        $ADCSObjects += Get-CAHostObject -ADCSObjects $ADCSObjects
-        $CAHosts = Get-CAHostObject -ADCSObjects $ADCSObjects
-        $CAHosts | ForEach-Object { $SafeUsers += '|' + $_.Name }
+        Set-AdditionalCAProperty -ADCSObjects $ADCSObjects -ForestGC $ForestGC
+        $CAHosts = Get-CAHostObject -ADCSObjects $ADCSObjects -ForestGC $ForestGC
+        $ADCSObjects += $CAHosts
     }
 
-    if ( $Scans ) {
+    Set-AdditionalTemplateProperty -ADCSObjects $ADCSObjects
+
+    # Add SIDs of CA Hosts to $SafeUsers
+    $CAHosts | ForEach-Object { $SafeUsers += '|' + $_.objectSid }
+
+    #if ( $Scans ) {
     # If the Scans parameter was used, Invoke-Scans with the specified checks.
-        $Results = Invoke-Scans -Scans $Scans
-            # Re-hydrate the findings arrays from the Results hash table
-            $AllIssues      = $Results['AllIssues']
-            $AuditingIssues = $Results['AuditingIssues']
-            $ESC1           = $Results['ESC1']
-            $ESC2           = $Results['ESC2']
-            $ESC3           = $Results['ESC3']
-            $ESC4           = $Results['ESC4']
-            $ESC5           = $Results['ESC5']
-            $ESC6           = $Results['ESC6']
-            $ESC8           = $Results['ESC8']
+    $ScansParameters = @{
+        ADCSObjects        = $ADCSObjects
+        ClientAuthEkus     = $ClientAuthEKUs
+        DangerousRights    = $DangerousRights
+        EnrollmentAgentEKU = $EnrollmentAgentEKU
+        Mode               = $Mode
+        SafeObjectTypes    = $SafeObjectTypes
+        SafeOwners         = $SafeOwners
+        SafeUsers          = $SafeUsers
+        Scans              = $Scans
+        UnsafeUsers        = $UnsafeUsers
+        PreferredOwner     = $PreferredOwner
     }
+    $Results = Invoke-Scans @ScansParameters
+    # Re-hydrate the findings arrays from the Results hash table
+    $AllIssues = $Results['AllIssues']
+    $AuditingIssues = $Results['AuditingIssues']
+    $ESC1 = $Results['ESC1']
+    $ESC2 = $Results['ESC2']
+    $ESC3 = $Results['ESC3']
+    $ESC4 = $Results['ESC4']
+    $ESC5 = $Results['ESC5']
+    $ESC6 = $Results['ESC6']
+    $ESC8 = $Results['ESC8']
+    $ESC11 = $Results['ESC11']
+    $ESC13 = $Results['ESC13']
+    $ESC15 = $Results['ESC15']
 
     # If these are all empty = no issues found, exit
     if ($null -eq $Results) {
@@ -210,27 +296,49 @@
 
     switch ($Mode) {
         0 {
-            Format-Result $AuditingIssues '0'
-            Format-Result $ESC1 '0'
-            Format-Result $ESC2 '0'
-            Format-Result $ESC3 '0'
-            Format-Result $ESC4 '0'
-            Format-Result $ESC5 '0'
-            Format-Result $ESC6 '0'
-            Format-Result $ESC8 '0'
+            Format-Result -Issue $AuditingIssues -Mode 0
+            Format-Result -Issue $ESC1 -Mode 0
+            Format-Result -Issue $ESC2 -Mode 0
+            Format-Result -Issue $ESC3 -Mode 0
+            Format-Result -Issue $ESC4 -Mode 0
+            Format-Result -Issue $ESC5 -Mode 0
+            Format-Result -Issue $ESC6 -Mode 0
+            Format-Result -Issue $ESC8 -Mode 0
+            Format-Result -Issue $ESC11 -Mode 0
+            Format-Result -Issue $ESC13 -Mode 0
+            Format-Result -Issue $ESC15 -Mode 0
+            Write-Host @"
+[!] You ran Locksmith in Mode 0 which only provides an high-level overview of issues
+identified in the environment. For more details including:
+
+  - DistinguishedName of impacted object(s)
+  - Remediation guidance and/or code
+  - Revert guidance and/or code (in case remediation breaks something!)
+
+Run Locksmith in Mode 1!
+
+# Module version
+Invoke-Locksmith -Mode 1
+
+# Script version
+.\Invoke-Locksmith.ps1 -Mode 1`n
+"@ -ForegroundColor Yellow
         }
         1 {
-            Format-Result $AuditingIssues '1'
-            Format-Result $ESC1 '1'
-            Format-Result $ESC2 '1'
-            Format-Result $ESC3 '1'
-            Format-Result $ESC4 '1'
-            Format-Result $ESC5 '1'
-            Format-Result $ESC6 '1'
-            Format-Result $ESC8 '1'
+            Format-Result -Issue $AuditingIssues -Mode 1
+            Format-Result -Issue $ESC1 -Mode 1
+            Format-Result -Issue $ESC2 -Mode 1
+            Format-Result -Issue $ESC3 -Mode 1
+            Format-Result -Issue $ESC4 -Mode 1
+            Format-Result -Issue $ESC5 -Mode 1
+            Format-Result -Issue $ESC6 -Mode 1
+            Format-Result -Issue $ESC8 -Mode 1
+            Format-Result -Issue $ESC11 -Mode 1
+            Format-Result -Issue $ESC13 -Mode 1
+            Format-Result -Issue $ESC15 -Mode 1
         }
         2 {
-            $Output = 'ADCSIssues.CSV'
+            $Output = Join-Path -Path $OutputPath -ChildPath "$FilePrefix ADCSIssues.CSV"
             Write-Host "Writing AD CS issues to $Output..."
             try {
                 $AllIssues | Select-Object Forest, Technique, Name, Issue | Export-Csv -NoTypeInformation $Output
@@ -240,7 +348,7 @@
             }
         }
         3 {
-            $Output = 'ADCSRemediation.CSV'
+            $Output = Join-Path -Path $OutputPath -ChildPath "$FilePrefix ADCSRemediation.CSV"
             Write-Host "Writing AD CS issues to $Output..."
             try {
                 $AllIssues | Select-Object Forest, Technique, Name, DistinguishedName, Issue, Fix | Export-Csv -NoTypeInformation $Output
@@ -250,150 +358,20 @@
             }
         }
         4 {
-            Write-Host "`nExecuting Mode 4 - Attempting to fix all identified issues!`n" -ForegroundColor Green
-            Write-Host 'Creating a script (' -NoNewline
-            Write-Host 'Invoke-RevertLocksmith.ps1' -ForegroundColor White -NoNewline
-            Write-Host ") which can be used to revert any changes made by Locksmith...`n"
-            try { Export-RevertScript -AuditingIssues $AuditingIssues -ESC1 $ESC1 -ESC2 $ESC2 -ESC6 $ESC6 } catch {}
-            if ($AuditingIssues) {
-                $AuditingIssues | ForEach-Object {
-                    $FixBlock = [scriptblock]::Create($_.Fix)
-                    Write-Host 'ISSUE:' -ForegroundColor White
-                    Write-Host "Auditing is not fully enabled on Certification Authority `"$($_.Name)`".`n"
-                    Write-Host 'TECHNIQUE:' -ForegroundColor White
-                    Write-Host "$($_.Technique)`n"
-                    Write-Host 'ACTION TO BE PEFORMED:' -ForegroundColor White
-                    Write-Host "Locksmith will attempt to fully enable auditing on Certification Authority `"$($_.Name)`".`n"
-                    Write-Host 'COMMAND(S) TO BE RUN:'
-                    Write-Host 'PS> ' -NoNewline
-                    Write-Host "$($_.Fix)`n" -ForegroundColor Cyan
-                    Write-Host 'OPERATIONAL IMPACT:' -ForegroundColor White
-                    Write-Host "This change should have little to no impact on the AD CS environment.`n" -ForegroundColor Green
-                    Write-Host "If you continue, Locksmith will attempt to fix this issue.`n" -ForegroundColor Yellow
-                    Write-Host "Continue with this operation? [Y] Yes " -NoNewline
-                    Write-Host "[N] " -ForegroundColor Yellow -NoNewline
-                    Write-Host "No: " -NoNewLine
-                    $WarningError = ''
-                    $WarningError = Read-Host
-                    if ($WarningError -like 'y') {
-                        try {
-                            Invoke-Command -ScriptBlock $FixBlock
-                        } catch {
-                            Write-Error 'Could not modify AD CS auditing. Are you a local admin on the CA host?'
-                        }
-                    } else {
-                        Write-Host "SKIPPED!`n" -ForegroundColor Yellow
-                    }
-                }
+            $params = @{
+                AuditingIssues = $AuditingIssues
+                ESC1           = $ESC1
+                ESC2           = $ESC2
+                ESC3           = $ESC3
+                ESC4           = $ESC4
+                ESC5           = $ESC5
+                ESC6           = $ESC6
+                ESC11          = $ESC11
+                ESC13          = $ESC13
             }
-            if ($ESC1) {
-                $ESC1 | ForEach-Object {
-                    $FixBlock = [scriptblock]::Create($_.Fix)
-                    Write-Host 'ISSUE:' -ForegroundColor White
-                    Write-Host "Security Principals can enroll in `"$($_.Name)`" template using a Subject Alternative Name without Manager Approval.`n"
-                    Write-Host 'TECHNIQUE:' -ForegroundColor White
-                    Write-Host "$($_.Technique)`n"
-                    Write-Host 'ACTION TO BE PEFORMED:' -ForegroundColor White
-                    Write-Host "Locksmith will attempt to enable Manager Approval on the `"$($_.Name)`" template.`n"
-                    Write-Host 'CCOMMAND(S) TO BE RUN:'
-                    Write-Host 'PS> ' -NoNewline
-                    Write-Host "$($_.Fix)`n" -ForegroundColor Cyan
-                    Write-Host 'OPERATIONAL IMPACT:' -ForegroundColor White
-                    Write-Host "WARNING: This change could cause some services to stop working until certificates are approved.`n" -ForegroundColor Yellow
-                    Write-Host "If you continue, Locksmith will attempt to fix this issue.`n" -ForegroundColor Yellow
-                    Write-Host "Continue with this operation? [Y] Yes " -NoNewline
-                    Write-Host "[N] " -ForegroundColor Yellow -NoNewline
-                    Write-Host "No: " -NoNewLine
-                    $WarningError = ''
-                    $WarningError = Read-Host
-                    if ($WarningError -like 'y') {
-                        try {
-                            Invoke-Command -ScriptBlock $FixBlock
-                        } catch {
-                            Write-Error 'Could not enable Manager Approval. Are you an Active Directory or AD CS admin?'
-                        }
-                    } else {
-                        Write-Host "SKIPPED!`n" -ForegroundColor Yellow
-                    }
-
-                }
-            }
-            if ($ESC2) {
-                $ESC2 | ForEach-Object {
-                    $FixBlock = [scriptblock]::Create($_.Fix)
-                    Write-Host 'ISSUE:' -ForegroundColor White
-                    Write-Host "Security Principals can enroll in `"$($_.Name)`" template and create a Subordinate Certification Authority without Manager Approval.`n"
-                    Write-Host 'TECHNIQUE:' -ForegroundColor White
-                    Write-Host "$($_.Technique)`n"
-                    Write-Host 'ACTION TO BE PEFORMED:' -ForegroundColor White
-                    Write-Host "Locksmith will attempt to enable Manager Approval on the `"$($_.Name)`" template.`n"
-                    Write-Host 'COMMAND(S) TO BE RUN:' -ForegroundColor White
-                    Write-Host 'PS> ' -NoNewline
-                    Write-Host "$($_.Fix)`n" -ForegroundColor Cyan
-                    Write-Host 'OPERATIONAL IMPACT:' -ForegroundColor White
-                    Write-Host "WARNING: This change could cause some services to stop working until certificates are approved.`n" -ForegroundColor Yellow
-                    Write-Host "If you continue, Locksmith will attempt to fix this issue.`n" -ForegroundColor Yellow
-                    Write-Host "Continue with this operation? [Y] Yes " -NoNewline
-                    Write-Host "[N] " -ForegroundColor Yellow -NoNewline
-                    Write-Host "No: " -NoNewLine
-                    $WarningError = ''
-                    $WarningError = Read-Host
-                    if ($WarningError -like 'y') {
-                        try {
-                            Invoke-Command -ScriptBlock $FixBlock
-                        } catch {
-                            Write-Error 'Could not enable Manager Approval. Are you an Active Directory or AD CS admin?'
-                        }
-                    } else {
-                        Write-Host "SKIPPED!`n" -ForegroundColor Yellow
-                    }
-                }
-            }
-            if ($ESC6) {
-                $ESC6 | ForEach-Object {
-                    $FixBlock = [scriptblock]::Create($_.Fix)
-                    Write-Host 'ISSUE:' -ForegroundColor White
-                    Write-Host "The Certification Authority `"$($_.Name)`" has the dangerous EDITF_ATTRIBUTESUBJECTALTNAME2 flag enabled.`n"
-                    Write-Host 'TECHNIQUE:' -ForegroundColor White
-                    Write-Host "$($_.Technique)`n"
-                    Write-Host 'ACTION TO BE PEFORMED:' -ForegroundColor White
-                    Write-Host "Locksmith will attempt to disable the EDITF_ATTRIBUTESUBJECTALTNAME2 flag on Certifiction Authority `"$($_.Name)`".`n"
-                    Write-Host 'COMMAND(S) TO BE RUN' -ForegroundColor White
-                    Write-Host 'PS> ' -NoNewline
-                    Write-Host "$($_.Fix)`n" -ForegroundColor Cyan
-                    $WarningError = 'n'
-                    Write-Host 'OPERATIONAL IMPACT:' -ForegroundColor White
-                    Write-Host "WARNING: This change could cause some services to stop working.`n" -ForegroundColor Yellow
-                    Write-Host "If you continue, Locksmith will attempt to fix this issue.`n" -ForegroundColor Yellow
-                    Write-Host "Continue with this operation? [Y] Yes " -NoNewline
-                    Write-Host "[N] " -ForegroundColor Yellow -NoNewline
-                    Write-Host "No: " -NoNewLine
-                    $WarningError = ''
-                    $WarningError = Read-Host
-                    if ($WarningError -like 'y') {
-                        try {
-                            Invoke-Command -ScriptBlock $FixBlock
-                        } catch {
-                            Write-Error 'Could not disable the EDITF_ATTRIBUTESUBJECTALTNAME2 flag. Are you an Active Directory or AD CS admin?'
-                        }
-                    } else {
-                        Write-Host "SKIPPED!`n" -ForegroundColor Yellow
-                    }
-                }
-            }
-
-            Write-Host "Mode 4 Complete! There are no more issues that Locksmith can automatically resolve.`n" -ForegroundColor Green
-            Write-Host 'If you experience any operational impact from using Locksmith Mode 4, use ' -NoNewline
-            Write-Host 'Invoke-RevertLocksmith.ps1 ' -ForegroundColor White
-            Write-Host "to revert all changes made by Locksmith. It can be found in the current working directory.`n"
-            Write-Host @"
-REMINDER: Locksmith cannot automatically resolve all AD CS issues at this time.
-There may be more AD CS issues remaining in your environment.
-Use Locksmith in Modes 0-3 to further investigate your environment
-or reach out to the Locksmith team for assistance. We'd love to help`n
-"@ -ForegroundColor Yellow
+            Invoke-Remediation @params
         }
     }
     Write-Host 'Thank you for using ' -NoNewline
-    Write-Host "❤ Locksmith ❤`n" -ForegroundColor Magenta
+    Write-Host "Locksmith <3`n" -ForegroundColor Magenta
 }
